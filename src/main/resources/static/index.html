@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Java Chat</title>
+<style>
+body { font-family: system-ui, Arial, sans-serif; margin: 2rem; }
+#log { border: 1px solid #ccc; height: 300px; overflow: auto; padding: .5rem; margin-top: .5rem; }
+.row { margin: .5rem 0; }
+.msg { margin: .25rem 0; }
+.sender { font-weight: bold; }
+</style>
+</head>
+<body>
+<h1>Java WebSocket Chat</h1>
+<div class="row">
+<label> Name: <input id="name" placeholder="your name" /> </label>
+<button id="connect">Connect</button>
+<button id="disconnect" disabled>Disconnect</button>
+</div>
+<div class="row">
+<input id="message" placeholder="type a message" style="width: 70%" />
+<button id="send" disabled>Send</button>
+</div>
+<div id="log"></div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+<script>
+let stompClient = null;
+
+
+function add(line) {
+const el = document.createElement('div');
+el.className = 'msg';
+el.innerHTML = line;
+const log = document.getElementById('log');
+log.appendChild(el);
+log.scrollTop = log.scrollHeight;
+}
+
+
+function setConnected(connected) {
+document.getElementById('connect').disabled = connected;
+document.getElementById('disconnect').disabled = !connected;
+document.getElementById('send').disabled = !connected;
+}
+
+
+document.getElementById('connect').onclick = () => {
+const socket = new SockJS('/ws');
+stompClient = Stomp.over(socket);
+stompClient.connect({}, (frame) => {
+setConnected(true);
+add(`<em>connected</em>`);
+stompClient.subscribe('/topic/messages', (msg) => {
+const body = JSON.parse(msg.body);
+const when = new Date(body.timestamp).toLocaleTimeString();
+add(`<span class="sender">${body.sender}</span> [${when}]: ${body.content}`);
+});
+});
+};
+
+
+document.getElementById('disconnect').onclick = () => {
+if (stompClient) stompClient.disconnect(() => setConnected(false));
+add('<em>disconnected</em>');
+};
+
+
+document.getElementById('send').onclick = () => {
+const name = document.getElementById('name').value || 'anonymous';
+const content = document.getElementById('message').value;
+if (!content) return;
+stompClient.send('/app/chat', {}, JSON.stringify({ sender: name, content }));
+document.getElementById('message').value = '';
+};
+</script>
+</body>
+</html>
