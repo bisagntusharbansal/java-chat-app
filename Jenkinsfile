@@ -16,7 +16,10 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t java-chat-app:latest .'
+                sh '''
+                docker build -t java-chat-app:${BUILD_NUMBER} .
+                docker tag java-chat-app:${BUILD_NUMBER} java-chat-app:latest
+                '''
             }
         }
 
@@ -27,6 +30,12 @@ pipeline {
                 docker run -d --name java-chat-app -p 8085:8085 java-chat-app:latest
                 '''
             }
+        }
+    }
+
+    post {
+        always {
+            archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
         }
     }
 }
